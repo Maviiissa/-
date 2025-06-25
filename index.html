@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>学术蟑螂抽卡机</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      font-size: 2.2rem;
+      color: #facc15;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 1rem 2rem;
+      background: #facc15;
+      border: none;
+      border-radius: 8px;
+      color: #111;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    #card {
+      margin-top: 2rem;
+      font-size: 1.3rem;
+      text-align: center;
+      padding: 2rem;
+      border: 2px dashed #facc15;
+      border-radius: 12px;
+      max-width: 500px;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    #card.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .card-title {
+      font-weight: bold;
+      color: #facc15;
+      margin-bottom: 0.5rem;
+      font-size: 1.4rem;
+    }
+    .card-body {
+      font-size: 1.2rem;
+      line-height: 1.5;
+    }
+    #history {
+      margin-top: 2rem;
+      width: 90%;
+      max-width: 500px;
+      text-align: left;
+    }
+    #history h2 {
+      color: #facc15;
+      font-size: 1.3rem;
+      margin-bottom: 0.5rem;
+    }
+    #history-list {
+      list-style: none;
+      padding: 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    #history-list li {
+      background: rgba(250, 201, 21, 0.1);
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 4px;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>科研蟑螂抽卡机 🎴</h1>
+  <button id="draw-btn">抽一张卡！</button>
+  <div id="card"></div>
+  <div id="history">
+    <h2>抽卡记录</h2>
+    <ul id="history-list"></ul>
+  </div>
+  <audio id="bgm" loop style="display:none;">
+    <source src="https://cdn.pixabay.com/audio/2022/10/16/audio_12f81b54f6.mp3" type="audio/mp3">
+  </audio>
+  <script>
+    // ----------------卡池内容-----------------
+    const cards = [
+        { level: 'R', text: "整理3条今天的待办事项。" },
+        { level: 'R', text: "随机读一篇相关领域的文献摘要，并用一句话总结它的主要观点。" },
+        { level: 'R', text: "把桌面整理10分钟，只收拾和科研相关的东西。" },
+        { level: 'R', text: "花15分钟在数据库（如PubMed/Google Scholar）随机搜课题热词，并阅读1篇新文献。" },
+        { level: 'R', text: "和GPT聊5分钟：今天你最想解决的research小问题是什么？" },
+        { level: 'R', text: "看一位领域大牛的新论文/讲座视频。" },
+        { level: 'R', text: "找一篇你导师近3年内的论文，把摘要抄一遍。" },
+        { level: 'R', text: "打开老文献，标记出1句你觉得最有用或最想吐槽的话。" },
+        { level: 'R', text: "花10分钟检查邮箱，把全部和研究相关的邮件归档到一个文件夹。" },
+        { level: 'R', text: "找一个你从没试过的数据库，检索课题相关关键词并截图界面。" },
+        { level: 'R', text: "必须写至少500 words科研相关输出，写完才能休息。" },
+        { level: 'R', text: "录一段你向自己解释研究方法的视频，存档以后看笑话" },
+        { level: 'R', text: "用1分钟说出你项目的研究问题，手机录音回放一次。" },
+        { level: 'R', text: "给自己安排一次10分钟的冥想，想象科研顺利的一天。" },
+        { level: 'R', text: "用一句话为你的论文或项目写一个吸引人的标题，写三版。" },
+        { level: 'R', text: "随机查找老年患者住院质量相关的一个评估量表，整理到自己的知识库" },
+        { level: 'R', text: "统计你研究对象中老年住院率的最新文献数据，并写一句总结。" },
+        { level: 'R', text: "用表格对比两种常见老年疾病（如糖尿病和高血压）的住院治疗流程。" },
+        { level: 'R', text: "定时45分钟番茄钟，不看手机，专注写作/阅读一项研究任务。" },
+        { level: 'R', text: "起身喝水800ml，变身科研水母🪼" },
+        { level: 'R', text: "随机查一个你不了解的宗教，了解15分钟" },
+        { level: 'SR', text: "设定两小时写作无网挑战，成功可刷30分钟抖音" },
+        { level: 'SR', text: "根据澳大利亚卫生部门数据，写一段当前老年人住院主要原因的分析（100字+）。" },
+        { level: 'SR', text: "归纳并画出1张图示，展示老年人常见慢病的患病率随年龄的变化趋势。" },
+        { level: 'SR', text: "写一份简要报告，比较不同国家老年患者平均住院天数的差异及可能原因。" },
+        { level: 'SR', text: "挑一个理论概念，查找2-3条不同学者的观点，写小总结。" },
+        { level: 'SR', text: "写一篇《科研拉踩文》，内容不限对象，越drama越好" },
+        { level: 'SR', text: "精读一篇文献的methods部分，用自己的话复述流程要点并转录下来。" },
+        { level: 'SR', text: "让GPT写一份‘科研疯人申请表’，内容越离谱越好" },
+        { level: 'SR', text: "设置番茄钟45分钟写作，立刻开始" },
+        { level: 'SR', text: "和GPT对话30分钟，只聊自己的学术领域" },
+        { level: 'SR', text: "为你的研究写一个“FAQ”（常见疑惑3条及你的回复）。" },
+        { level: 'SR', text: "查找并归纳一个相关领域的技术新方法，并写成1页ppt或一段总结。" },
+        { level: 'SR', text: "写一句slogan，做成表情包（可AI生成/手绘），表达你研究核心。" },
+        { level: 'SR', text: "写一份文献阅读笔记，总结一篇论文的创新之处和不足。" },
+        { level: 'SR', text: "总结3条澳大利亚老年医学相关健康政策，写进研究笔记。" },
+        { level: 'SSR', text: "关掉所有消息通知5小时，世界塌了也不许开" },
+        { level: 'SSR', text: "用番茄工作法完成3*45分钟连续高效研究输出，每轮后写一句心得体会。" },
+        { level: 'SSR', text: "连续写作90分钟，完成一份产出小节初稿（不少于400字）。" },
+        { level: 'SSR', text: "写一页笔记，讨论老年医学领域目前最大未满足健康需求（unmet needs）。" },
+        { level: 'SSR', text: "挑选一份高影响力的老年医学指南/政策，写一段摘要说明其对你课题的意义。" },
+        { level: 'SSR', text: "搜一个“如何躺平却仍然赢得诺奖”的关键词，读它" },
+        { level: 'SSR', text: "整理出你课题核心领域近五年10篇代表性文献，做关键词、方法、结论三栏对比表。" },
+        { level: 'SSR', text: "写一篇500 words产出草稿" },
+    ];
+    // --------分级抽取概率-------------
+    const rCards   = cards.filter(c => c.level === 'R');
+    const srCards  = cards.filter(c => c.level === 'SR');
+    const ssrCards = cards.filter(c => c.level === 'SSR');
+
+    // --------抽卡记录部分-------------
+    let history = JSON.parse(localStorage.getItem('drawCardHistory') || '[]');
+    function renderHistory() {
+      historyList.innerHTML = history.map(i => `<li>${i}</li>`).join('');
+    }
+    renderHistory();
+
+    // ----------抽卡机制参数------------
+    const DRAW_LIMIT = 2;     // 每5小时可抽2次
+    const COOLDOWN = 5 * 60 * 60 * 1000; // 5小时，毫秒
+
+    function getDrawState() {
+      const state = JSON.parse(localStorage.getItem('drawCardCycleState') || '{}');
+      return state;
+    }
+
+    function setDrawState(state) {
+      localStorage.setItem('drawCardCycleState', JSON.stringify(state));
+    }
+
+    function getCurrentCycle() {
+      // 用2024-01-01 00:00为时间原点
+      const epoch = new Date('2024-01-01T00:00:00').getTime();
+      const now = Date.now();
+      const diff = now - epoch;
+      const cycle = Math.floor(diff / COOLDOWN);
+      return cycle;
+    }
+
+    function updateDrawBtn() {
+      const cycle = getCurrentCycle();
+      const state = getDrawState();
+      const cur = state[cycle] || { count: 0, time: Date.now() };
+      if (cur.count >= DRAW_LIMIT) {
+        // 计算下一个刷新时间
+        const nextCycle = (cycle + 1) * COOLDOWN + new Date('2024-01-01T00:00:00').getTime();
+        const leftMs = nextCycle - Date.now();
+        const leftH = Math.ceil(leftMs / 3600000);
+        drawBtn.disabled = true;
+        drawBtn.textContent = `已抽${DRAW_LIMIT}次，${leftH}小时后刷新🎴`;
+      } else {
+        drawBtn.disabled = false;
+        drawBtn.textContent = `抽一张卡！（本轮剩余${DRAW_LIMIT - cur.count}次）`;
+      }
+    }
+
+    function drawCard() {
+      const cycle = getCurrentCycle();
+      const state = getDrawState();
+      if (!state[cycle]) state[cycle] = { count: 0, time: Date.now() };
+      if (state[cycle].count >= DRAW_LIMIT) {
+        alert("本轮已用完2次抽卡机会，请等待5小时刷新！");
+        updateDrawBtn();
+        return;
+      }
+      if (bgm.paused) bgm.play().catch(() => {});
+      const rand = Math.random();
+      let pool = rand < 0.15 ? ssrCards : rand < 0.40 ? srCards : rCards;
+      const card = pool[Math.floor(Math.random() * pool.length)];
+      cardDiv.classList.remove('show');
+      cardDiv.innerHTML = `<div class='card-title'>${card.level} 抽中！</div><div class='card-body'>${card.text}</div>`;
+      setTimeout(() => cardDiv.classList.add('show'), 50);
+      const timestamp = new Date().toLocaleString();
+      history.unshift(`${timestamp} — ${card.level} - ${card.text}`);
+      if (history.length > 20) history.pop();
+      localStorage.setItem('drawCardHistory', JSON.stringify(history));
+      renderHistory();
+
+      state[cycle].count += 1;
+      setDrawState(state);
+
+      updateDrawBtn();
+    }
+
+    // 自动检测新周期到来，刷新按钮
+    setInterval(updateDrawBtn, 5000); // 每5秒检测一次
+    updateDrawBtn();
+
+    drawBtn.onclick = drawCard;
+  </script>
+</body>
+</html>
