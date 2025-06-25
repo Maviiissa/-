@@ -94,8 +94,9 @@
     <source src="https://cdn.pixabay.com/audio/2022/10/16/audio_12f81b54f6.mp3" type="audio/mp3">
   </audio>
   <script>
-    // ----------------卡池内容-----------------
-    const cards = [
+    window.onload = function () {
+      // --------------- 卡池内容 ---------------
+      const cards = [
         { level: 'R', text: "整理3条今天的待办事项。" },
         { level: 'R', text: "随机读一篇相关领域的文献摘要，并用一句话总结它的主要观点。" },
         { level: 'R', text: "把桌面整理10分钟，只收拾和科研相关的东西。" },
@@ -140,91 +141,99 @@
         { level: 'SSR', text: "搜一个“如何躺平却仍然赢得诺奖”的关键词，读它" },
         { level: 'SSR', text: "整理出你课题核心领域近五年10篇代表性文献，做关键词、方法、结论三栏对比表。" },
         { level: 'SSR', text: "写一篇500 words产出草稿" },
-    ];
-    // --------分级抽取概率-------------
-    const rCards   = cards.filter(c => c.level === 'R');
-    const srCards  = cards.filter(c => c.level === 'SR');
-    const ssrCards = cards.filter(c => c.level === 'SSR');
+      ];
 
-    // --------抽卡记录部分-------------
-    let history = JSON.parse(localStorage.getItem('drawCardHistory') || '[]');
-    function renderHistory() {
-      historyList.innerHTML = history.map(i => `<li>${i}</li>`).join('');
-    }
-    renderHistory();
+      // 分级抽取概率
+      const rCards   = cards.filter(c => c.level === 'R');
+      const srCards  = cards.filter(c => c.level === 'SR');
+      const ssrCards = cards.filter(c => c.level === 'SSR');
 
-    // ----------抽卡机制参数------------
-    const DRAW_LIMIT = 2;     // 每5小时可抽2次
-    const COOLDOWN = 5 * 60 * 60 * 1000; // 5小时，毫秒
+      // DOM节点
+      const drawBtn = document.getElementById("draw-btn");
+      const cardDiv = document.getElementById("card");
+      const historyList = document.getElementById("history-list");
+      const bgm = document.getElementById("bgm");
 
-    function getDrawState() {
-      const state = JSON.parse(localStorage.getItem('drawCardCycleState') || '{}');
-      return state;
-    }
-
-    function setDrawState(state) {
-      localStorage.setItem('drawCardCycleState', JSON.stringify(state));
-    }
-
-    function getCurrentCycle() {
-      // 用2024-01-01 00:00为时间原点
-      const epoch = new Date('2024-01-01T00:00:00').getTime();
-      const now = Date.now();
-      const diff = now - epoch;
-      const cycle = Math.floor(diff / COOLDOWN);
-      return cycle;
-    }
-
-    function updateDrawBtn() {
-      const cycle = getCurrentCycle();
-      const state = getDrawState();
-      const cur = state[cycle] || { count: 0, time: Date.now() };
-      if (cur.count >= DRAW_LIMIT) {
-        // 计算下一个刷新时间
-        const nextCycle = (cycle + 1) * COOLDOWN + new Date('2024-01-01T00:00:00').getTime();
-        const leftMs = nextCycle - Date.now();
-        const leftH = Math.ceil(leftMs / 3600000);
-        drawBtn.disabled = true;
-        drawBtn.textContent = `已抽${DRAW_LIMIT}次，${leftH}小时后刷新🎴`;
-      } else {
-        drawBtn.disabled = false;
-        drawBtn.textContent = `抽一张卡！（本轮剩余${DRAW_LIMIT - cur.count}次）`;
+      // 抽卡记录部分
+      let history = JSON.parse(localStorage.getItem('drawCardHistory') || '[]');
+      function renderHistory() {
+        historyList.innerHTML = history.map(i => `<li>${i}</li>`).join('');
       }
-    }
-
-    function drawCard() {
-      const cycle = getCurrentCycle();
-      const state = getDrawState();
-      if (!state[cycle]) state[cycle] = { count: 0, time: Date.now() };
-      if (state[cycle].count >= DRAW_LIMIT) {
-        alert("本轮已用完2次抽卡机会，请等待5小时刷新！");
-        updateDrawBtn();
-        return;
-      }
-      if (bgm.paused) bgm.play().catch(() => {});
-      const rand = Math.random();
-      let pool = rand < 0.15 ? ssrCards : rand < 0.40 ? srCards : rCards;
-      const card = pool[Math.floor(Math.random() * pool.length)];
-      cardDiv.classList.remove('show');
-      cardDiv.innerHTML = `<div class='card-title'>${card.level} 抽中！</div><div class='card-body'>${card.text}</div>`;
-      setTimeout(() => cardDiv.classList.add('show'), 50);
-      const timestamp = new Date().toLocaleString();
-      history.unshift(`${timestamp} — ${card.level} - ${card.text}`);
-      if (history.length > 20) history.pop();
-      localStorage.setItem('drawCardHistory', JSON.stringify(history));
       renderHistory();
 
-      state[cycle].count += 1;
-      setDrawState(state);
+      // 抽卡机制参数
+      const DRAW_LIMIT = 2;     // 每5小时可抽2次
+      const COOLDOWN = 5 * 60 * 60 * 1000; // 5小时，毫秒
 
+      function getDrawState() {
+        const state = JSON.parse(localStorage.getItem('drawCardCycleState') || '{}');
+        return state;
+      }
+
+      function setDrawState(state) {
+        localStorage.setItem('drawCardCycleState', JSON.stringify(state));
+      }
+
+      function getCurrentCycle() {
+        // 用2024-01-01 00:00为时间原点
+        const epoch = new Date('2024-01-01T00:00:00').getTime();
+        const now = Date.now();
+        const diff = now - epoch;
+        const cycle = Math.floor(diff / COOLDOWN);
+        return cycle;
+      }
+
+      function updateDrawBtn() {
+        const cycle = getCurrentCycle();
+        const state = getDrawState();
+        const cur = state[cycle] || { count: 0, time: Date.now() };
+        if (cur.count >= DRAW_LIMIT) {
+          // 计算下一个刷新时间
+          const nextCycle = (cycle + 1) * COOLDOWN + new Date('2024-01-01T00:00:00').getTime();
+          const leftMs = nextCycle - Date.now();
+          const leftH = Math.ceil(leftMs / 3600000);
+          drawBtn.disabled = true;
+          drawBtn.textContent = `已抽${DRAW_LIMIT}次，${leftH}小时后刷新🎴`;
+        } else {
+          drawBtn.disabled = false;
+          drawBtn.textContent = `抽一张卡！（本轮剩余${DRAW_LIMIT - cur.count}次）`;
+        }
+      }
+
+      function drawCard() {
+        const cycle = getCurrentCycle();
+        const state = getDrawState();
+        if (!state[cycle]) state[cycle] = { count: 0, time: Date.now() };
+        if (state[cycle].count >= DRAW_LIMIT) {
+          alert("本轮已用完2次抽卡机会，请等待5小时刷新！");
+          updateDrawBtn();
+          return;
+        }
+        if (bgm.paused) bgm.play().catch(() => {});
+        const rand = Math.random();
+        let pool = rand < 0.15 ? ssrCards : rand < 0.40 ? srCards : rCards;
+        const card = pool[Math.floor(Math.random() * pool.length)];
+        cardDiv.classList.remove('show');
+        cardDiv.innerHTML = `<div class='card-title'>${card.level} 抽中！</div><div class='card-body'>${card.text}</div>`;
+        setTimeout(() => cardDiv.classList.add('show'), 50);
+        const timestamp = new Date().toLocaleString();
+        history.unshift(`${timestamp} — ${card.level} - ${card.text}`);
+        if (history.length > 20) history.pop();
+        localStorage.setItem('drawCardHistory', JSON.stringify(history));
+        renderHistory();
+
+        state[cycle].count += 1;
+        setDrawState(state);
+
+        updateDrawBtn();
+      }
+
+      // 自动检测新周期到来，刷新按钮
+      setInterval(updateDrawBtn, 5000); // 每5秒检测一次
       updateDrawBtn();
-    }
 
-    // 自动检测新周期到来，刷新按钮
-    setInterval(updateDrawBtn, 5000); // 每5秒检测一次
-    updateDrawBtn();
-
-    drawBtn.onclick = drawCard;
+      drawBtn.onclick = drawCard;
+    };
   </script>
 </body>
 </html>
